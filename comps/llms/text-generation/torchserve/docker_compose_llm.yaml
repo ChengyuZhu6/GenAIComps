@@ -1,0 +1,23 @@
+# Copyright (C) 2024 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+version: "3.8"
+
+services:
+  llm:
+    image: quay.io/chengyu_zhu/opea:router
+    container_name: finrag-router
+    ports:
+      - "9080:9080"
+      - "8080:8080"
+    ipc: host
+    environment:
+      no_proxy: ${no_proxy}
+      http_proxy: ${http_proxy}
+      https_proxy: ${https_proxy}
+      LLM_MODEL: ${LLM_MODEL}
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
