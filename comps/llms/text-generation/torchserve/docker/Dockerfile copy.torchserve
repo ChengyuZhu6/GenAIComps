@@ -15,14 +15,12 @@ RUN useradd -m -s /bin/bash user && \
 
 USER user
 
-COPY comps/llms/text-generation/torchserve/requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
 COPY comps /home/user/comps
 
 RUN ls -l /home/user/comps/llms/text-generation/torchserve
 
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /home/user/comps/llms/text-generation/torchserve/requirements.txt
 ENV PYTHONPATH=$PYTHONPATH:/home/user
 
 WORKDIR /home/user/comps/llms/text-generation/torchserve
