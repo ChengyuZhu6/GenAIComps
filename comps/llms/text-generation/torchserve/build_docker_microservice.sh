@@ -3,7 +3,7 @@
 
 cd ../../../../
 docker build  \
-    -t quay.io/chengyu_zhu/opea:router \
+    -t quay.io/chengyu_zhu/opea:normalize \
     --build-arg https_proxy=$https_proxy \
     --build-arg http_proxy=$http_proxy \
     -f comps/llms/text-generation/torchserve/docker/Dockerfile.torchserve .
