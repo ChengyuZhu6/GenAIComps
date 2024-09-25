@@ -3,9 +3,10 @@
 
 import os
 from typing import Union
+import time
 
 from fastapi.responses import StreamingResponse
-from langchain_community.llms import VLLMOpenAI
+from openai import OpenAI
 from langchain_core.prompts import PromptTemplate
 from template import ChatTemplate
 
@@ -47,124 +48,42 @@ def post_process_text(text: str):
     host="0.0.0.0",
     port=9000,
 )
-def llm_generate(input: Union[LLMParamsDoc, ChatCompletionRequest, SearchedDoc]):
+async def llm_generate(input: Union[LLMParamsDoc, ChatCompletionRequest, SearchedDoc]):
     if logflag:
         logger.info(input)
 
-    prompt_template = None
+    stream_gen_time = []
+    start = time.time()
 
-    if not isinstance(input, SearchedDoc) and input.chat_template:
-        prompt_template = PromptTemplate.from_template(input.chat_template)
-        input_variables = prompt_template.input_variables
+    if logflag:
+        logger.info("[ ChatCompletionRequest ] input in opea format")
+    client = OpenAI(
+        api_key="EMPTY",
+        base_url=llm_endpoint + "/v1",
+    )
 
-    if isinstance(input, SearchedDoc):
-        if logflag:
-            logger.info("[ SearchedDoc ] input from retriever microservice")
+    chat_completion = client.completions.create(
+        model=input.model,
+        prompt=input.messages,
+        max_tokens=input.max_tokens,
+        stream=input.stream,
+        temperature=input.temperature,
+        top_p=input.top_p,
+    )
+    if input.stream:
 
-        prompt = input.initial_query
-
-        if input.retrieved_docs:
-            docs = [doc.text for doc in input.retrieved_docs]
-            if logflag:
-                logger.info(f"[ SearchedDoc ] combined retrieved docs: {docs}")
-
-            prompt = ChatTemplate.generate_rag_prompt(input.initial_query, docs)
-
-        # use default llm parameter for inference
-        new_input = LLMParamsDoc(query=prompt)
-
-        if logflag:
-            logger.info(f"[ SearchedDoc ] final input: {new_input}")
-
-        llm = VLLMOpenAI(
-            openai_api_key="EMPTY",
-            openai_api_base=llm_endpoint + "/v1",
-            max_tokens=new_input.max_tokens,
-            model_name=model_name,
-            top_p=new_input.top_p,
-            temperature=new_input.temperature,
-            frequency_penalty=new_input.frequency_penalty,
-            presence_penalty=new_input.presence_penalty,
-            streaming=new_input.streaming,
-        )
-
-        if new_input.streaming:
-
-            def stream_generator():
-                chat_response = ""
-                for text in llm.stream(new_input.query):
-                    chat_response += text
-                    chunk_repr = repr(text.encode("utf-8"))
-                    if logflag:
-                        logger.info(f"[ SearchedDoc ] chunk: {chunk_repr}")
-                    yield f"data: {chunk_repr}\n\n"
+        def stream_generator():
+            for c in chat_completion:
                 if logflag:
-                    logger.info(f"[ SearchedDoc ] stream response: {chat_response}")
-                yield "data: [DONE]\n\n"
+                    logger.info(c)
+                yield f"data: {c.model_dump_json()}\n\n"
+            yield "data: [DONE]\n\n"
 
-            return StreamingResponse(stream_generator(), media_type="text/event-stream")
-
-        else:
-            response = llm.invoke(new_input.query)
-            if logflag:
-                logger.info(response)
-
-            return GeneratedDoc(text=response, prompt=new_input.query)
-
-    elif isinstance(input, LLMParamsDoc):
+        return StreamingResponse(stream_generator(), media_type="text/event-stream")
+    else:
         if logflag:
-            logger.info("[ LLMParamsDoc ] input from rerank microservice")
-
-        prompt = input.query
-
-        if prompt_template:
-            if sorted(input_variables) == ["context", "question"]:
-                prompt = prompt_template.format(question=input.query, context="\n".join(input.documents))
-            elif input_variables == ["question"]:
-                prompt = prompt_template.format(question=input.query)
-            else:
-                logger.info(
-                    f"[ LLMParamsDoc ] {prompt_template} not used, we only support 2 input variables ['question', 'context']"
-                )
-        else:
-            if input.documents:
-                # use rag default template
-                prompt = ChatTemplate.generate_rag_prompt(input.query, input.documents)
-
-        llm = VLLMOpenAI(
-            openai_api_key="EMPTY",
-            openai_api_base=llm_endpoint + "/v1",
-            max_tokens=input.max_tokens,
-            model_name=model_name,
-            top_p=input.top_p,
-            temperature=input.temperature,
-            frequency_penalty=input.frequency_penalty,
-            presence_penalty=input.presence_penalty,
-            streaming=input.streaming,
-        )
-
-        if input.streaming:
-
-            def stream_generator():
-                chat_response = ""
-                for text in llm.stream(input.query):
-                    chat_response += text
-                    chunk_repr = repr(text.encode("utf-8"))
-                    if logflag:
-                        logger.info(f"[ LLMParamsDoc ] chunk: {chunk_repr}")
-                    yield f"data: {chunk_repr}\n\n"
-                if logflag:
-                    logger.info(f"[ LLMParamsDoc ] stream response: {chat_response}")
-                yield "data: [DONE]\n\n"
-
-            return StreamingResponse(stream_generator(), media_type="text/event-stream")
-
-        else:
-            response = llm.invoke(input.query)
-            if logflag:
-                logger.info(response)
-
-            return GeneratedDoc(text=response, prompt=input.query)
+            logger.info(chat_completion)
+        return chat_completion
 
 
 if __name__ == "__main__":

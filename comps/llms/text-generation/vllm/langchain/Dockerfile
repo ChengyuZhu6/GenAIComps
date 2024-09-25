@@ -14,8 +14,7 @@ RUN useradd -m -s /bin/bash user && \
     chown -R user /home/user/
 
 USER user
-
-COPY comps /home/user/comps
+COPY comps/llms/text-generation/vllm/langchain/requirements.txt /home/user/comps/llms/text-generation/vllm/langchain/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade pip && \
     if [ ${ARCH} = "cpu" ]; then \
@@ -25,6 +24,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     fi
 
 ENV PYTHONPATH=$PYTHONPATH:/home/user
+
+COPY comps /home/user/comps
 
 WORKDIR /home/user/comps/llms/text-generation/vllm/langchain
 

@@ -44,7 +44,7 @@ If you start an LLM microservice with docker, the `docker_compose_llm.yaml` file
 In order to start TGI and LLM services, you need to setup the following environment variables first.
 
 ```bash
-export HF_TOKEN=${your_hf_api_token}
+export HF_TOKEN="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"
 export TGI_LLM_ENDPOINT="http://${your_ip}:8008"
 export LLM_MODEL_ID=${your_hf_llm_model}
 ```
@@ -98,7 +98,6 @@ curl http://${your_ip}:9000/v1/chat/completions \
   -X POST \
   -d '{"query":"What is Deep Learning?","max_tokens":17,"top_k":10,"top_p":0.95,"typical_p":0.95,"temperature":0.01,"repetition_penalty":1.03,"streaming":false}' \
   -H 'Content-Type: application/json'
-
 # streaming mode
 curl http://${your_ip}:9000/v1/chat/completions \
   -X POST \

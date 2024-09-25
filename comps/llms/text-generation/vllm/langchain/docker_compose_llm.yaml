@@ -5,40 +5,38 @@ version: "3.8"
 
 services:
   vllm-service:
-    image: opea/vllm:hpu
-    container_name: vllm-gaudi-server
+    image: intelanalytics/ipex-llm-serving-cpu:latest
+    container_name: vllm-cpu-server
+    mem_limit: 64g
+    cpuset: "0-47"
     ports:
       - "8008:80"
     volumes:
-      - "./data:/data"
+      - "/root/.cache/modelscope/hub/qwen/Qwen2-7B:/data"
     environment:
       no_proxy: ${no_proxy}
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
       HF_TOKEN: ${HUGGINGFACEHUB_API_TOKEN}
-      HABANA_VISIBLE_DEVICES: all
-      OMPI_MCA_btl_vader_single_copy_mechanism: none
-      LLM_MODEL: ${LLM_MODEL}
-    runtime: habana
-    cap_add:
-      - SYS_NICE
+      LLM_MODEL: Qwen2-7B
     ipc: host
-    command: /bin/bash -c "export VLLM_CPU_KVCACHE_SPACE=40 && python3 -m vllm.entrypoints.openai.api_server --enforce-eager --model $LLM_MODEL --tensor-parallel-size 1 --host 0.0.0.0 --port 80"
+    command: -c "export VLLM_CPU_KVCACHE_SPACE=40 VLLM_LOGGING_LEVEL=DEBUG && python3 -m vllm.entrypoints.openai.api_server --enforce-eager --model /data --tensor-parallel-size 1 --host 0.0.0.0 --port 80 --trust-remote-code --served-model-name Qwen2-7B"
   llm:
-    image: opea/llm-vllm:latest
-    container_name: llm-vllm-gaudi-server
+    image: quay.io/chengyu_zhu/opea/llm-vllm-ipex:latest
+    container_name: llm-vllm-cpu-server
     depends_on:
       - vllm-service
     ports:
-      - "9000:9000"
+      - "9090:9000"
     ipc: host
     environment:
       no_proxy: ${no_proxy}
       http_proxy: ${http_proxy}
       https_proxy: ${https_proxy}
-      vLLM_ENDPOINT: ${vLLM_ENDPOINT}
+      vLLM_ENDPOINT: http://10.67.124.46:8008
       HUGGINGFACEHUB_API_TOKEN: ${HUGGINGFACEHUB_API_TOKEN}
-      LLM_MODEL: ${LLM_MODEL}
+      LLM_MODEL: Qwen2-7B
+      LOGFLAG: True
     restart: unless-stopped
 
 networks:

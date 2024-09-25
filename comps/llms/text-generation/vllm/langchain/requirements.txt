@@ -14,3 +14,4 @@ shortuuid
 transformers
 uvicorn
 vllm
+openai==1.35.13

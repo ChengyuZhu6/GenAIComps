@@ -10,8 +10,10 @@ services:
     ports:
       - "8008:80"
     volumes:
-      - "./data:/data"
-    shm_size: 1g
+      - "/root/.cache/modelscope/hub/qwen/Qwen2-7B:/data"
+    shm_size: 16g
+    mem_limit: 64g
+    cpuset: "0-47"
     environment:
       no_proxy: ${no_proxy}
       http_proxy: ${http_proxy}
@@ -24,7 +26,7 @@ services:
     image: opea/llm-tgi:latest
     container_name: llm-tgi-server
     ports:
-      - "9000:9000"
+      - "9090:9000"
     ipc: host
     environment:
       no_proxy: ${no_proxy}
